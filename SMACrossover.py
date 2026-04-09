@@ -1,4 +1,4 @@
-from DBconnection import connection
+from DBconnection import Connection
 
 def SMA(price_array, timePeriod):
     print(f"Calculating Simple Moving Average for {timePeriod} days...")
@@ -50,8 +50,8 @@ def SMACrossover(priceArray, shortInterval, longInterval):
     return {"Net Profit":netProfit, "Total Number Of Trades":numTrades, "Profitable Trades as a Percentage":(profitNum/numTrades)*100}
 
 
-connectionObj = connection("GOOGL","time_series_daily")
-prices = connectionObj.getPrices()
+connectionObj = Connection("MSFT","time_series_daily")
+prices = connectionObj.get_close_prices()
 print(SMACrossover(prices,5,10))
-print(SMACrossover(prices,10,20))
-print(SMACrossover(prices,15,25))
+print(SMACrossover(prices,20,50))
+print(SMACrossover(prices,50,200))

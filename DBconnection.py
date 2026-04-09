@@ -1,64 +1,62 @@
 import os
+import yfinance as yf
+yf.shared._requests = None
 from dotenv import load_dotenv
-import requests
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 
 load_dotenv()
 
-class connection:
+class Connection:
     def __init__(self, stockName, DBName):
-        self.__collection = stockName
-        self.__databaseName = DBName
-        self.__client = MongoClient(os.getenv("URI"), server_api=ServerApi('1'))
-        self.__db = self.__client[self.__databaseName]
-        self.__collectionObj = self.__db[self.__collection]
-    def addDataIntoDatabase(self):
-        if (self.__databaseName == "time_series_daily"):
-            fetch_URL = f'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={self.__collection}&interval=5min&apikey={os.getenv("APIKEY")}'
-            r = requests.get(fetch_URL)
-            data = r.json()
-            for date in data["Time Series (Daily)"]:
-                priceInfo = {date:data["Time Series (Daily)"][date]}
-                query = {f"{date}":{"$exists": True}}
-                doc = self.__collectionObj.find_one(query)
-                if (doc):
-                    continue
-                else:
-                    result = self.__collectionObj.insert_one(priceInfo)
-                    print(priceInfo)
-                    print("Inserted ID:", result.inserted_id)
-        if (self.__databaseName == "time_series_monthly"):
-            fetch_URL = f'https://www.alphavantage.co/query?function=TIME_SERIES_MONTHLY&symbol={self.__collection}&interval=5min&apikey={os.getenv("APIKEY")}'
-            r = requests.get(fetch_URL)
-            data = r.json()
-            for date in data["Monthly Time Series"]:
-                priceInfo = {date:data["Monthly Time Series"][date]}
-                query = {f"{date}":{"$exists": True}}
-                doc = self.__collectionObj.find_one(query)
-                if (doc):
-                    continue
-                else:
-                    result = self.__collectionObj.insert_one(priceInfo)
-                    print(priceInfo)
-                    print("Inserted ID:", result.inserted_id)
-    def getPrices(self):
-        print("Fetching Data From The Database...")
-        if (self.__databaseName == "time_series_daily"):
-            dict = {1:31,2:28,3:31,4:30,5:31,6:30,7:31,8:31,9:30,10:31,11:30,12:31}
-            price_array = []
-            for k in range(25,27):
-                for i in range (1,13):
-                    for j in range (1,dict[i]+1):
-                        month = f"{i}"
-                        date = f"{j}"
-                        year = f"20{k}"
-                        if (i%10 == i):
-                            month = f"0{i}"
-                        if (j%10 == j):
-                            date = f"0{j}"
-                        query = {f"{year}-{month}-{date}":{"$exists": True}}
-                        doc = self.__collectionObj.find_one(query)
-                        if (doc):
-                            price_array.append(doc[f"{year}-{month}-{date}"]["4. close"])
-        return price_array
+        self.collection_name = stockName
+        self.database_name = DBName
+        self.client = MongoClient(os.getenv("URI"), server_api=ServerApi('1'))
+        self.db = self.client[self.database_name]
+        self.collection = self.db[self.collection_name]
+    def add_daily_data(self, period="10y"):
+        ticker = yf.Ticker(self.collection_name)
+        df = ticker.history(period=period)
+        print("Fetching data from yfinance...")
+        for date, row in df.iterrows():
+            date_str = str(date.date())
+            price_data = {
+                "date": date_str,
+                "open": float(row["Open"]),
+                "high": float(row["High"]),
+                "low": float(row["Low"]),
+                "close": float(row["Close"]),
+                "volume": int(row["Volume"])
+            }
+            if self.collection.find_one({"date": date_str}):
+                continue
+            result = self.collection.insert_one(price_data)
+            print(f"Inserted {date_str} | ID: {result.inserted_id}")
+
+    def get_close_prices(self):
+        print("Fetching close prices from DB...")
+        cursor = self.collection.find().sort("date", 1)
+        prices = [doc["close"] for doc in cursor]
+        return prices
+
+    def get_full_data(self):
+        print("Fetching full dataset from DB...")
+        cursor = self.collection.find().sort("date", 1)
+        data = []
+        for doc in cursor:
+            data.append({
+                "date": doc["date"],
+                "open": doc["open"],
+                "high": doc["high"],
+                "low": doc["low"],
+                "close": doc["close"],
+                "volume": doc["volume"]
+            })
+        return data
+
+    def clear_data(self):
+        self.collection.delete_many({})
+        print("Collection cleared")
+
+# connectionObj = Connection("MSFT","time_series_daily")
+# connectionObj.add_daily_data()
