@@ -44,4 +44,3 @@ class connection:
                     print("Inserted ID:", result.inserted_id)
 
 connectionObj = connection("WMT","time_series_daily")
-connectionObj.addDataIntoDatabase()
