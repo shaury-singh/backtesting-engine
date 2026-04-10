@@ -3,21 +3,17 @@ from DBconnection import Connection
 def EMA(priceArray, timePeriod):
     currentEMA = 0
     result = []
-    window = 0
     for i in range(0,timePeriod-1):
         if (priceArray[i] == None):
-            result.append(None)
             continue
         currentEMA += priceArray[i]
-        window += 1
         result.append(None)
-    currentEMA = currentEMA/window
+    currentEMA = currentEMA/timePeriod
     result.append(currentEMA)
     # print(f"first range of EMA is: {currentEMA}")
     alpha = 2/(timePeriod+1)
     for i in range(timePeriod,len(priceArray)):
         if (priceArray[i] == None):
-            result.append(None)
             continue
         currentEMA = alpha*priceArray[i] + (1-alpha)*currentEMA
         result.append(currentEMA)
