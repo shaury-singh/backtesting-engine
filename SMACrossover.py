@@ -50,8 +50,12 @@ def SMACrossover(priceArray, shortInterval, longInterval):
     return {"Net Profit":netProfit, "Total Number Of Trades":numTrades, "Profitable Trades as a Percentage":(profitNum/numTrades)*100}
 
 
-connectionObj = Connection("MSFT","time_series_daily")
+connectionObj = Connection("SPGI","time_series_daily")
 prices = connectionObj.get_close_prices()
+spread = connectionObj.getSpread()
+print(spread)
+print(spread["max"] - spread["min"])
+# print(SMACrossover(prices,3,5))
 print(SMACrossover(prices,5,10))
 print(SMACrossover(prices,20,50))
 print(SMACrossover(prices,50,200))

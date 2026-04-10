@@ -1,6 +1,6 @@
 import os
 import yfinance as yf
-yf.shared._requests = None
+# yf.shared._requests = None
 from dotenv import load_dotenv
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
@@ -14,6 +14,7 @@ class Connection:
         self.client = MongoClient(os.getenv("URI"), server_api=ServerApi('1'))
         self.db = self.client[self.database_name]
         self.collection = self.db[self.collection_name]
+        
     def add_daily_data(self, period="10y"):
         ticker = yf.Ticker(self.collection_name)
         df = ticker.history(period=period)
@@ -36,8 +37,19 @@ class Connection:
     def get_close_prices(self):
         print("Fetching close prices from DB...")
         cursor = self.collection.find().sort("date", 1)
-        prices = [doc["close"] for doc in cursor]
-        return prices
+        self.__prices = [doc["close"] for doc in cursor]
+        return self.__prices
+    
+    def getSpread(self):
+        maxPrice = self.__prices[0]
+        minPrice = self.__prices[0]
+        for price in self.__prices:
+            if (maxPrice < price):
+                maxPrice = price
+            if (minPrice > price):
+                minPrice = price
+        return {"max":maxPrice,"min":minPrice}
+
 
     def get_full_data(self):
         print("Fetching full dataset from DB...")
@@ -58,5 +70,5 @@ class Connection:
         self.collection.delete_many({})
         print("Collection cleared")
 
-# connectionObj = Connection("MSFT","time_series_daily")
+# connectionObj = Connection("WMT","time_series_daily")
 # connectionObj.add_daily_data()
