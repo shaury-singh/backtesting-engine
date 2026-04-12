@@ -55,3 +55,18 @@ class Engine:
             elif (EMAref1[i] == None or EMAref2[i] == None):
                 differenceLine.append(None)
         return differenceLine
+    
+    def stoploss(self, buyIndex, lossValue, priceArray, buyPrice, totalShares):
+        investedCapital = buyPrice*totalShares
+        absolute_loss = (investedCapital*lossValue)/100
+        for i in range(buyIndex,len(priceArray)-1):
+            if (priceArray[i] >= buyPrice):
+                continue
+            else:
+                loss = buyPrice*totalShares - totalShares*priceArray[i+1]
+                if (loss >= absolute_loss):
+                    return loss
+                else:
+                    continue
+        return 0
+                

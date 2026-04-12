@@ -12,27 +12,41 @@ class MACDIndicator(Engine):
         slowEMA = self.EMA(slowTimePeriod, priceArray)
         MACDLine = self.EMADifference(fastEMA, slowEMA)
         signalLine = self.EMA(signalTimePeriod, MACDLine)
+        buy_prices_array = []
         position = 0
-        buyPrices = []
-        sellPrices = []
-        currBuyPrice = 0
-        netPL = 0
+        totalShares = 0
+        averageBuyPrice = 0
         for i in range(1,len(MACDLine)-1):
             if (MACDLine[i] is None or signalLine[i] is None or MACDLine[i-1] is None or signalLine[i-1] is None):
                 continue
-            if (position == 0 and MACDLine[i-1] <= signalLine[i-1] and MACDLine[i] > signalLine[i] and MACDLine[i] < 0):
-                buyPrices.append(priceArray[i+1])
-                currBuyPrice = priceArray[i+1]
+            if (position == 0 and MACDLine[i-1] <= signalLine[i-1] and MACDLine[i] > signalLine[i] and MACDLine[i] < 0): # buy condition
+                shares_bought_in_this_trade = self.__currentCapital/priceArray[i+1]
+                self.__currentCapital = self.__currentCapital - (priceArray[i+1]*shares_bought_in_this_trade)
+                averageBuyPrice = (averageBuyPrice*totalShares + priceArray[i+1]*shares_bought_in_this_trade)/(totalShares+shares_bought_in_this_trade)
+                totalShares += shares_bought_in_this_trade
+                buy_prices_array.append({"Shares":shares_bought_in_this_trade, "buyPrice":priceArray[i+1]})
                 position = 1
-            if (position == 1 and MACDLine[i-1] >= signalLine[i-1] and MACDLine[i] < signalLine[i] and MACDLine[i] > 0):
-                sellPrices.append(priceArray[i+1])
-                netPL += priceArray[i+1] - currBuyPrice
-                position = 0
-        if (len(buyPrices) > len(sellPrices)):
-            netPL += priceArray[len(priceArray)-1] - currBuyPrice
-        return netPL
+                loss = self.stoploss(i, self.__stopLoss, priceArray, averageBuyPrice, totalShares)
+                if (loss == 0):
+                    return self.__currentCapital - self.__totalCapital + (priceArray[len(priceArray)-1]*totalShares - averageBuyPrice*totalShares)
+                else:
+                    totalShares = 0
+                    self.__currentCapital = self.__totalCapital - loss
+                    averageBuyPrice = 0
+                    buy_prices_array.clear()
+                    position = 0
+            if (position == 1 and MACDLine[i-1] >= signalLine[i-1] and MACDLine[i] < signalLine[i] and MACDLine[i] > 0): # sell condition
+                if (totalShares > 0):
+                    pl = (priceArray[i+1]*totalShares - averageBuyPrice*totalShares)
+                    totalShares = 0
+                    averageBuyPrice = 0
+                    self.__currentCapital += pl
+                    position = 0
+                else:
+                    continue
+        return self.__currentCapital - self.__totalCapital
 
-MACDObj = MACDIndicator(1000,0.1,0.01)
+MACDObj = MACDIndicator(100000,10,0.01)
 connectionObj = Connection("TSLA","time_series_daily")
 priceArray = connectionObj.get_close_prices()
 print(MACDObj.MACDCrossover(12,26,9,priceArray))
