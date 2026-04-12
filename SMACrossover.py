@@ -25,7 +25,7 @@ def SMACrossover(priceArray, shortInterval, longInterval):
     netProfit = 0
     numTrades = 0
     profitNum = 0
-    for i in range(1, len(smaLongArray)):
+    for i in range(1, len(smaLongArray)-1):
         if i + longInterval >= len(priceArray):
             break
         smaShort_prev = smaShortArray[i-1 + offset]
@@ -33,10 +33,10 @@ def SMACrossover(priceArray, shortInterval, longInterval):
         smaLong_prev = smaLongArray[i-1]
         smaLong_curr = smaLongArray[i]
         if position == 0 and smaShort_prev < smaLong_prev and smaShort_curr >= smaLong_curr:
-            buyPrice = float(priceArray[i + longInterval])
+            buyPrice = float(priceArray[i + longInterval + 1])
             position = 1
         elif position == 1 and smaShort_prev > smaLong_prev and smaShort_curr <= smaLong_curr:
-            sellPrice = float(priceArray[i + longInterval])
+            sellPrice = float(priceArray[i + longInterval + 1])
             netProfit += (sellPrice - buyPrice)
             if ((sellPrice - buyPrice) >= 0):
                 profitNum += 1

@@ -1,44 +1,38 @@
+from Engine import Engine
 from DBconnection import Connection
-
-def EMA(priceArray, timePeriod):
-    currentEMA = 0
-    result = []
-    for i in range(0,timePeriod-1):
-        if (priceArray[i] == None):
-            continue
-        currentEMA += priceArray[i]
-        result.append(None)
-    currentEMA = currentEMA/timePeriod
-    result.append(currentEMA)
-    # print(f"first range of EMA is: {currentEMA}")
-    alpha = 2/(timePeriod+1)
-    for i in range(timePeriod,len(priceArray)):
-        if (priceArray[i] == None):
-            continue
-        currentEMA = alpha*priceArray[i] + (1-alpha)*currentEMA
-        result.append(currentEMA)
-    return result
-
-
-def MovingAverageCovengenceDivergence(priceArray):
-    MACD_Generating_Line = []
-    EMA_26 = EMA(priceArray,26)
-    EMA_12 = EMA(priceArray,12)
-    for i in range(len(EMA_12)):
-        if (EMA_12[i] != None and EMA_26[i] != None):
-            MACD_Generating_Line.append(EMA_12[i] - EMA_26[i])
-        elif (EMA_12[i] == None or EMA_26[i] == None):
-            MACD_Generating_Line.append(None)
-    Signal = EMA(MACD_Generating_Line,9)
-    Histogram = []
-    for i in range(len(Signal)):
-        if (MACD_Generating_Line[i] != None and Signal[i] != None):
-            Histogram.append(MACD_Generating_Line[i] - Signal[i])
-        elif (MACD_Generating_Line[i] == None or Signal[i] == None):
-            Histogram.append(None)
-    return {"Histogram":Histogram,"MACD Generating Line":MACD_Generating_Line,"Signal":Signal}
+class MACDIndicator(Engine):
+    def __init__(self, totalCapital, stopLoss, fees):
+        self.__totalCapital = totalCapital
+        self.__currentCapital = self.__totalCapital
+        self.__stopLoss = stopLoss
+        self.__fees = fees
     
+    def MACDCrossover(self, fastTimePeriod, slowTimePeriod, signalTimePeriod, priceArray, investProfits=False):
+        fastEMA = self.EMA(fastTimePeriod, priceArray)
+        slowEMA = self.EMA(slowTimePeriod, priceArray)
+        MACDLine = self.EMADifference(fastEMA, slowEMA)
+        signalLine = self.EMA(signalTimePeriod, MACDLine)
+        position = 0
+        buyPrices = []
+        sellPrices = []
+        currBuyPrice = 0
+        netPL = 0
+        for i in range(1,len(MACDLine)-1):
+            if (MACDLine[i] is None or signalLine[i] is None or MACDLine[i-1] is None or signalLine[i-1] is None):
+                continue
+            if (position == 0 and MACDLine[i-1] <= signalLine[i-1] and MACDLine[i] > signalLine[i] and MACDLine[i] < 0):
+                buyPrices.append(priceArray[i+1])
+                currBuyPrice = priceArray[i+1]
+                position = 1
+            if (position == 1 and MACDLine[i-1] >= signalLine[i-1] and MACDLine[i] < signalLine[i] and MACDLine[i] > 0):
+                sellPrices.append(priceArray[i+1])
+                netPL += priceArray[i+1] - currBuyPrice
+                position = 0
+        if (len(buyPrices) > len(sellPrices)):
+            netPL += priceArray[len(priceArray)-1] - currBuyPrice
+        return netPL
 
-connectionObj = Connection("SPGI","time_series_daily")
-prices = connectionObj.get_close_prices()
-print(MovingAverageCovengenceDivergence(prices))
+MACDObj = MACDIndicator(1000,0.1,0.01)
+connectionObj = Connection("TSLA","time_series_daily")
+priceArray = connectionObj.get_close_prices()
+print(MACDObj.MACDCrossover(12,26,9,priceArray))

@@ -69,6 +69,3 @@ class Connection:
     def clear_data(self):
         self.collection.delete_many({})
         print("Collection cleared")
-
-# connectionObj = Connection("WMT","time_series_daily")
-# connectionObj.add_daily_data()
