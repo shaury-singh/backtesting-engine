@@ -56,17 +56,17 @@ class Engine:
                 differenceLine.append(None)
         return differenceLine
     
-    def stoploss(self, buyIndex, lossValue, priceArray, buyPrice, totalShares):
-        investedCapital = buyPrice*totalShares
-        absolute_loss = (investedCapital*lossValue)/100
-        for i in range(buyIndex,len(priceArray)-1):
-            if (priceArray[i] >= buyPrice):
-                continue
+    def stoploss(self, buyIndex, lossValue, priceArray, avgBuyPrice, totalShares):
+        # total Invested amount = avgBuyPrice * totalShares
+        # the absoluteLossValue will be caluclated on the toal Invested Amount
+        investment = avgBuyPrice * totalShares
+        maximumBearableLoss = (lossValue * investment)/100 
+        for i in range (buyIndex+1, len(priceArray)):
+            if (avgBuyPrice > priceArray[i]):
+                lossIncurred = (avgBuyPrice - priceArray[i]) * totalShares
+                if (lossIncurred >= maximumBearableLoss):
+                    return {"loss":lossIncurred, "sellIndex":i}
             else:
-                loss = buyPrice*totalShares - totalShares*priceArray[i+1]
-                if (loss >= absolute_loss):
-                    return loss
-                else:
-                    continue
-        return 0
-                
+                continue
+        lastPrice = priceArray[len(priceArray)-1]
+        return {"loss":(avgBuyPrice-lastPrice)*totalShares, "sellIndex":len(priceArray)-1}
